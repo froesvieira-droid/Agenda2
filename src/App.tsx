@@ -1,16 +1,19 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutGrid, ListChecks, CheckCircle, Circle, Search, Settings, Bell, BellOff } from 'lucide-react';
+import { LayoutGrid, ListChecks, CheckCircle, Circle, Search, Settings, Bell, BellOff, Calendar as CalendarIcon, List } from 'lucide-react';
 import { Task, FilterType, Category } from './types';
 import { TaskForm } from './components/TaskForm';
 import { TaskItem } from './components/TaskItem';
 import { CategoryManager } from './components/CategoryManager';
+import { CalendarView } from './components/CalendarView';
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: '1', name: 'Trabalho', color: '#6366f1' },
   { id: '2', name: 'Pessoal', color: '#10b981' },
   { id: '3', name: 'Saúde', color: '#ef4444' },
 ];
+
+type ViewMode = 'list' | 'calendar';
 
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>(() => {
@@ -23,6 +26,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
   });
 
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [filter, setFilter] = useState<FilterType>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,6 +158,23 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-3">
+            <div className="flex bg-slate-100 p-1 rounded-xl mr-2">
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                title="Visualização em Lista"
+              >
+                <List size={18} />
+              </button>
+              <button 
+                onClick={() => setViewMode('calendar')}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                title="Visualização em Calendário"
+              >
+                <CalendarIcon size={18} />
+              </button>
+            </div>
+
             <button 
               onClick={requestNotificationPermission}
               className={`p-2 rounded-lg transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'}`}
@@ -167,17 +188,6 @@ export default function App() {
             >
               <Settings size={20} />
             </button>
-            <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
-            <div className="hidden sm:flex items-center gap-4 text-sm font-medium text-slate-500">
-              <div className="flex items-center gap-1">
-                <CheckCircle size={16} className="text-emerald-500" />
-                <span>{stats.completed}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Circle size={16} className="text-indigo-500" />
-                <span>{stats.pending}</span>
-              </div>
-            </div>
           </div>
         </div>
       </header>
@@ -216,95 +226,110 @@ export default function App() {
         {/* Task Form */}
         <TaskForm categories={categories} onAddTask={addTask} />
 
-        {/* Filters and Search */}
-        <section className="mb-6 flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
-              {(['all', 'active', 'completed'] as FilterType[]).map((f) => (
+        {viewMode === 'list' ? (
+          <>
+            {/* Filters and Search */}
+            <section className="mb-6 flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+                  {(['all', 'active', 'completed'] as FilterType[]).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setFilter(f)}
+                      className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        filter === f 
+                          ? 'bg-white text-indigo-600 shadow-sm' 
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {f === 'all' ? 'Todas' : f === 'active' ? 'Ativas' : 'Concluídas'}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Buscar tarefas..."
+                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                    filter === f 
-                      ? 'bg-white text-indigo-600 shadow-sm' 
-                      : 'text-slate-500 hover:text-slate-700'
+                  onClick={() => setCategoryFilter('all')}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${
+                    categoryFilter === 'all'
+                      ? 'bg-slate-800 text-white border-slate-800'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  {f === 'all' ? 'Todas' : f === 'active' ? 'Ativas' : 'Concluídas'}
+                  Todas Categorias
                 </button>
-              ))}
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setCategoryFilter(cat.id)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold border transition-all whitespace-nowrap`}
+                    style={{
+                      backgroundColor: categoryFilter === cat.id ? cat.color : 'white',
+                      color: categoryFilter === cat.id ? 'white' : cat.color,
+                      borderColor: categoryFilter === cat.id ? cat.color : `${cat.color}30`
+                    }}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* Task List */}
+            <div className="space-y-3">
+              <AnimatePresence mode="popLayout">
+                {filteredTasks.length > 0 ? (
+                  filteredTasks.map((task) => (
+                    <TaskItem 
+                      key={task.id} 
+                      task={task} 
+                      category={categories.find(c => c.id === task.categoryId)}
+                      onToggle={toggleTask} 
+                      onDelete={deleteTask} 
+                    />
+                  ))
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200"
+                  >
+                    <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <LayoutGrid className="text-slate-300" size={32} />
+                    </div>
+                    <h3 className="text-slate-900 font-medium">Nenhuma tarefa encontrada</h3>
+                    <p className="text-slate-500 text-sm mt-1">
+                      {searchQuery ? 'Tente mudar sua busca.' : 'Comece adicionando uma nova tarefa acima!'}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type="text"
-                placeholder="Buscar tarefas..."
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <button
-              onClick={() => setCategoryFilter('all')}
-              className={`px-3 py-1 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${
-                categoryFilter === 'all'
-                  ? 'bg-slate-800 text-white border-slate-800'
-                  : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              Todas Categorias
-            </button>
-            {categories.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setCategoryFilter(cat.id)}
-                className={`px-3 py-1 rounded-full text-xs font-bold border transition-all whitespace-nowrap`}
-                style={{
-                  backgroundColor: categoryFilter === cat.id ? cat.color : 'white',
-                  color: categoryFilter === cat.id ? 'white' : cat.color,
-                  borderColor: categoryFilter === cat.id ? cat.color : `${cat.color}30`
-                }}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Task List */}
-        <div className="space-y-3">
-          <AnimatePresence mode="popLayout">
-            {filteredTasks.length > 0 ? (
-              filteredTasks.map((task) => (
-                <TaskItem 
-                  key={task.id} 
-                  task={task} 
-                  category={categories.find(c => c.id === task.categoryId)}
-                  onToggle={toggleTask} 
-                  onDelete={deleteTask} 
-                />
-              ))
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200"
-              >
-                <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <LayoutGrid className="text-slate-300" size={32} />
-                </div>
-                <h3 className="text-slate-900 font-medium">Nenhuma tarefa encontrada</h3>
-                <p className="text-slate-500 text-sm mt-1">
-                  {searchQuery ? 'Tente mudar sua busca.' : 'Comece adicionando uma nova tarefa acima!'}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+          </>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <CalendarView 
+              tasks={tasks} 
+              categories={categories} 
+              onToggleTask={toggleTask} 
+            />
+          </motion.div>
+        )}
       </main>
 
       {/* Footer / Quick Stats */}
